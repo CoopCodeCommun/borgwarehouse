@@ -25,7 +25,13 @@ services:
 
 
   # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
-  apprise:
-    container_name: apprise
-    image: caronc/apprise
-    user: "www-data:www-data"
+  # apprise:
+  #   container_name: apprise
+  #   image: caronc/apprise
+  #   user: "www-data:www-data"
+
+
+# install :
+
+# mkdir config ssh ssh_host repos tmp logs
+# sudo chown 1001:1001 config ssh ssh_host repos tmp logs
