@@ -68,8 +68,8 @@ networks:
 
 # install :
 
-# mkdir config ssh ssh_host repos tmp logs
-# sudo chown 1001:1001 config ssh ssh_host repos tmp logs
+# mkdir config ssh ssh_host repos tmp logs sync_config
+# sudo chown 1001:1001 config ssh ssh_host repos tmp logs sync_config
 # Create a cron on host ( not inside docker ) : 
 # * * * * * curl --request POST --url 'http://localhost:3000/api/v1/cron/status' --header 'Authorization: Bearer CRONJOB_KEY' ; curl --request POST --url 'http://localhost:3000/api/v1/cron/storage' --header 'Authorization: Bearer CRONJOB_KEY'
 
