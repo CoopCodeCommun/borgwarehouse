@@ -22,6 +22,14 @@ services:
       - "traefik.http.routers.borgwarehouse.tls.certresolver=myresolver"
       - "traefik.http.services.borgwarehouse.loadbalancer.server.port=3000"
       - "traefik.http.routers.borgwarehouse.rule=Host(`$FQDN`)"
+      
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    external: true
+
 
 
   # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
