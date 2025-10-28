@@ -31,6 +31,7 @@ services:
     image: ghcr.io/linuxserver/syncthing
     volumes:
       - ./sync_config:/config
+      - ./sync_data:/sync_data
       - ${BORG_REPOSITORY_PATH:?BORG_REPOSITORY_PATH variable missing}:/home/borgwarehouse/repos
     ports:
       - 8384:8384

@@ -2,8 +2,8 @@
 
 ``` 
 git clone https://github.com/CoopCodeCommun/borgwarehouse
-mkdir config ssh ssh_host repos tmp logs sync_config
-sudo chown 1001:1001 config ssh ssh_host repos tmp logs sync_config
+mkdir config ssh ssh_host repos tmp logs sync_config sync_data
+sudo chown 1001:1001 config ssh ssh_host repos tmp logs sync_config sync_data
 cp env_example .env
 ```
 
@@ -25,6 +25,9 @@ Il a été lancé avec le up et est configuré pour avoir le dossier repo ( le m
 	- le chemin racide du partage doit être /home/borgwarehouse/repos 
 	- dans l'onglet avancé, selectionnez bien Envoi seulement
 
+Attention, choisir ce chemin que pour synchroniser le dossier borg
+ne pas rajouter dans le futur d'autres dossier sync depuis synthing dans ce dossier
+utiliser pour cela le dossier /sync_data
 
 # Créer un nouveau Dépot :
 
