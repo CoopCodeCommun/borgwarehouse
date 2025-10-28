@@ -29,7 +29,6 @@ services:
 
   syncthing:
     image: ghcr.io/linuxserver/syncthing
-    user: "${UID:?UID variable missing}:${GID:?GID variable missing}"
     volumes:
       - ./sync_config:/config
       - ${BORG_REPOSITORY_PATH:?BORG_REPOSITORY_PATH variable missing}:/home/borgwarehouse/repos
