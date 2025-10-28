@@ -22,9 +22,38 @@ services:
       - "traefik.http.routers.borgwarehouse.tls.certresolver=myresolver"
       - "traefik.http.services.borgwarehouse.loadbalancer.server.port=3000"
       - "traefik.http.routers.borgwarehouse.rule=Host(`$FQDN`)"
-      
+    
     networks:
       - frontend
+    restart: always
+
+services:
+  syncthing:
+    image: ghcr.io/linuxserver/syncthing
+    user: "${UID:?UID variable missing}:${GID:?GID variable missing}"
+    volumes:
+      - ./sync_config:/config
+      - ${BORG_REPOSITORY_PATH:?BORG_REPOSITORY_PATH variable missing}:/home/borgwarehouse/repos
+    ports:
+      - 8384:8384
+      - 22000:22000
+      - 21027:21027/udp
+    environment:
+      - PUID=${UID:?UID variable missing}
+      - PGID=${GID:?GID variable missing}
+      - TZ=Europe/Paris
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=frontend
+      - traefik.http.routers.syncthing.tls.certresolver=myresolver
+      - traefik.http.routers.syncthing.rule=Host(`$SYNC_DOMAIN`)
+      - traefik.http.services.syncthing.loadbalancer.server.port=8384
+
+    networks:
+      - frontend
+    restart: always
+
+
 
 networks:
   frontend:
@@ -43,3 +72,19 @@ networks:
 
 # mkdir config ssh ssh_host repos tmp logs
 # sudo chown 1001:1001 config ssh ssh_host repos tmp logs
+# Create a cron on host ( not inside docker ) : 
+# * * * * * curl --request POST --url 'http://localhost:3000/api/v1/cron/status' --header 'Authorization: Bearer CRONJOB_KEY' ; curl --request POST --url 'http://localhost:3000/api/v1/cron/storage' --header 'Authorization: Bearer CRONJOB_KEY'
+
+# Nouveau dépot :
+
+# Aller dans le serveur et le dossier à sauvegarder
+# Générer une clé ssh si ce n'est pas déja fait avec l'utilisateur qui va lancer le script de sauvegarde
+# Créer un dépot sur l'UX de bogwarehouse (BWH) en ajoutant la clé publique
+# clic sur la ptite icone en haut a gauche du nouvel objet backup sur BWH pour copier l'adresse ssh
+# retourner sur le dossier de sauvegarde et initier le dépot en faisant : borg init -e repokey-blake2 <adresse ssh>
+# générer et renseigner un mot de passe super super super fort et le stocker dans un coffre fort numérique
+
+# Je le fait mais je suis pas sur que ça soit utile, mais on sait jamais : backuper la PASSPHRASE au même endroit que la clé :
+# - borg key export <adresse ssh> ./key && cat ./key && rm ./key
+
+# écrire le script de backup et le lancer régulièrement. Par exemple, pour Tibillet et une base postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh

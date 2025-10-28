@@ -5,8 +5,9 @@ WEB_SERVER_PORT=3000
 SSH_SERVER_PORT=2222
 
 # Hostname and URL
-FQDN=your.domain.com
-NEXTAUTH_URL=https://your.domain.com
+FQDN=bwh.domain.com
+NEXTAUTH_URL=https://bwh.domain.com
+SYNC_DOMAIN=https://sync.domain.com
 
 # Secrects
 NEXTAUTH_SECRET=your-secret
