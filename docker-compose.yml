@@ -51,6 +51,11 @@ services:
       - frontend
     restart: always
 
+  # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
+  # apprise:
+  #   container_name: apprise
+  #   image: caronc/apprise
+  #   user: "www-data:www-data"
 
 
 networks:
@@ -59,31 +64,6 @@ networks:
 
 
 
-  # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
-  # apprise:
-  #   container_name: apprise
-  #   image: caronc/apprise
-  #   user: "www-data:www-data"
 
 
-# install :
 
-# mkdir config ssh ssh_host repos tmp logs sync_config
-# sudo chown 1001:1001 config ssh ssh_host repos tmp logs sync_config
-# Create a cron on host ( not inside docker ) : 
-# * * * * * curl --request POST --url 'http://localhost:3000/api/v1/cron/status' --header 'Authorization: Bearer CRONJOB_KEY' ; curl --request POST --url 'http://localhost:3000/api/v1/cron/storage' --header 'Authorization: Bearer CRONJOB_KEY'
-
-# Nouveau dépot :
-
-# Aller dans le serveur et le dossier à sauvegarder
-# Générer une clé ssh si ce n'est pas déja fait avec l'utilisateur qui va lancer le script de sauvegarde
-# Créer un dépot sur l'UX de borgwarehouse (BWH) en ajoutant la clé publique
-# clic sur la ptite icone en haut a gauche du nouvel objet backup sur BWH pour copier l'adresse ssh
-# retourner sur le dossier de sauvegarde et initier le dépot en faisant : borg init -e repokey-blake2 <adresse ssh>
-# générer et renseigner un mot de passe super super super fort et le stocker dans un coffre fort numérique. Garder aussi l'id du repo au cazou ( ex: c7a620ed )
-
-# Je le fait mais je suis pas sur que ça soit utile, mais on sait jamais : backuper la PASSPHRASE au même endroit que la clé :
-# - borg key export <adresse ssh> ./key && cat ./key && rm ./key
-
-# écrire le script de backup et le lancer régulièrement. 
-# Par exemple, pour Tibillet et une base postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
