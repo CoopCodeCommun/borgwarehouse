@@ -37,8 +37,8 @@ services:
       - 22000:22000
       - 21027:21027/udp
     environment:
-      - PUID=${UID:?UID variable missing}
-      - PGID=${GID:?GID variable missing}
+      - PUID=0
+      - PGID=0
       - TZ=Europe/Paris
     labels:
       - traefik.enable=true
