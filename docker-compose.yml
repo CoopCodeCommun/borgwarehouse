@@ -27,7 +27,6 @@ services:
       - frontend
     restart: always
 
-services:
   syncthing:
     image: ghcr.io/linuxserver/syncthing
     user: "${UID:?UID variable missing}:${GID:?GID variable missing}"
@@ -79,12 +78,13 @@ networks:
 
 # Aller dans le serveur et le dossier à sauvegarder
 # Générer une clé ssh si ce n'est pas déja fait avec l'utilisateur qui va lancer le script de sauvegarde
-# Créer un dépot sur l'UX de bogwarehouse (BWH) en ajoutant la clé publique
+# Créer un dépot sur l'UX de borgwarehouse (BWH) en ajoutant la clé publique
 # clic sur la ptite icone en haut a gauche du nouvel objet backup sur BWH pour copier l'adresse ssh
 # retourner sur le dossier de sauvegarde et initier le dépot en faisant : borg init -e repokey-blake2 <adresse ssh>
-# générer et renseigner un mot de passe super super super fort et le stocker dans un coffre fort numérique
+# générer et renseigner un mot de passe super super super fort et le stocker dans un coffre fort numérique. Garder aussi l'id du repo au cazou ( ex: c7a620ed )
 
 # Je le fait mais je suis pas sur que ça soit utile, mais on sait jamais : backuper la PASSPHRASE au même endroit que la clé :
 # - borg key export <adresse ssh> ./key && cat ./key && rm ./key
 
-# écrire le script de backup et le lancer régulièrement. Par exemple, pour Tibillet et une base postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
+# écrire le script de backup et le lancer régulièrement. 
+# Par exemple, pour Tibillet et une base postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
