@@ -15,6 +15,15 @@ services:
       - ${BORG_REPOSITORY_PATH:?BORG_REPOSITORY_PATH variable missing}:/home/borgwarehouse/repos
       - ${TMP_PATH:?TMP_PATH variable missing}:/home/borgwarehouse/tmp
       - ${LOGS_PATH:?LOGS_PATH variable missing}:/home/borgwarehouse/logs
+    labels:
+      # requiered
+      - "traefik.enable=true" 
+      - "traefik.docker.network=frontend"
+      - "traefik.http.routers.borgwarehouse.tls.certresolver=myresolver"
+      - "traefik.http.services.borgwarehouse.loadbalancer.server.port=3000"
+      - "traefik.http.routers.borgwarehouse.rule=Host(`$FQDN`)"
+
+
   # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
   apprise:
     container_name: apprise
