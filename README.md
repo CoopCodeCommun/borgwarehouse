@@ -61,7 +61,7 @@ Exemple pour une base postgres :
 - https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
 
 Exemple pour un dossier complet (attention a qui lance le script ! root ou user ? )
-
+- https://github.com/CoopCodeCommun/borgwarehouse/blob/main/backup_folder_example.sh
 
 
 # Syncthing
