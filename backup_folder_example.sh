@@ -8,15 +8,25 @@ set -e
 # eval "$(sentry-cli bash-hook)"
 
 
-DUMPS_DIRECTORY="" # CHANGE ME : absolute path du dossier à backuper
+# CHANGE ME : absolute path du dossier à backuper
+DUMPS_DIRECTORY="" 
+
 mkdir -p $DUMPS_DIRECTORY
 
 #### BORG SEND TO SSH ####
-PREFIX="nuagemietefr" # CHANGE ME : le nom qui sera affiché au début de chaque backup
+
+# CHANGE ME : le nom qui sera affiché au début de chaque backup
+PREFIX="nuagemietefr" 
+
 DATE_NOW=$(date +%Y-%m-%d-%H-%M) # on rajoute au PREFIX la date
 
-export BORG_REPO="" # CHANGE ME : l'adresse du dépot, la même que celle lors de la création du dépot borg
-export BORG_PASSPHRASE="" # CHANGE ME : le pass généré lors de la création du dépot borg
+# CHANGE ME : l'adresse du dépot, la même que celle lors de la création du dépot borg
+# ex : ssh://borgwarehouse@localhost:2226/./674b31c6
+export BORG_REPO="" 
+
+# CHANGE ME : le pass généré lors de la création du dépot borg
+export BORG_PASSPHRASE="" 
+
 export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=yes 
 export BORG_RELOCATED_REPO_ACCESS_IS_OK=yes
 
