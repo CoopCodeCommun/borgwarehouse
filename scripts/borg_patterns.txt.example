@@ -1,0 +1,40 @@
+# Fichier de patterns borg (--patterns-from) — exemple.
+#
+# Copiez ce fichier en `borg_patterns.txt` à côté de backup_folder_example.sh :
+# s'il existe, le script le passe automatiquement à `borg create --patterns-from`.
+#
+# Utilité : filtrer finement un GROS dossier (type /home/moi) sans écrire une
+# liste d'exclusions interminable. On raisonne par inclusion/exclusion.
+#
+# Règles, évaluées de HAUT EN BAS, PREMIÈRE correspondance gagne :
+#   R <chemin>   racine à sauvegarder (remplace le chemin positionnel)
+#   + <pattern>  INCLURE ce qui correspond
+#   - <pattern>  EXCLURE ce qui correspond
+#   ! <pattern>  EXCLURE sans même descendre dedans (plus rapide)
+#
+# Styles de pattern : préfixe sh: (glob, défaut), fm: (fnmatch), re: (regex),
+# pp: (chemin), pf: (chemin exact). Voir `borg help patterns`.
+#
+# ---------------------------------------------------------------------------
+# Exemple : sauvegarder /home/moi en n'incluant QUE quelques dossiers utiles,
+# et en jetant les caches/poubelles connus.
+
+R /home/moi
+
+# On exclut d'abord (et sans descendre dedans) le bruit classique :
+! sh:**/.cache
+! sh:**/.local/share/Trash
+! sh:**/node_modules
+! sh:**/.venv
+! sh:**/__pycache__
+- sh:**/*.log
+- sh:**/*.tmp
+
+# Puis on choisit ce qu'on garde :
++ sh:home/moi/Documents/**
++ sh:home/moi/Photos/**
++ sh:home/moi/.ssh/**
++ sh:home/moi/.gnupg/**
+
+# Enfin, tout le reste est exclu :
+- sh:home/moi/**

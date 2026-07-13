@@ -29,39 +29,108 @@ Ce qui est le but principal recherché de cette stack : prévenir lorsqu'un back
 ```
 
 
-# Créer un nouveau Dépot :
+# Sauvegarder une nouvelle application
 
-- Aller dans le serveur et le dossier à sauvegarder
-- Générer une clé ssh si ce n'est pas déja fait avec l'utilisateur qui va lancer le script de sauvegarde
-- Créer un dépot sur l'UX de borgwarehouse (BWH) en ajoutant la clé publique
-- clic sur la ptite icone en haut a droite du nouvel objet backup sur BWH pour copier l'adresse ssh
-- retourner sur le dossier de sauvegarde et initier le dépot avec l'user qui lancera le script en faisant : 
+C'est la procédure à suivre pour tout nouveau déploiement (un Nextcloud, une
+base PostgreSQL, une app maison…). Le dossier [`scripts/`](./scripts) est un
+**kit à copier** sur la machine à sauvegarder : trois commandes, et la sauvegarde
+est en place, planifiée, vérifiée et surveillée.
+
+```bash
+# Sur la machine qui héberge l'application, à côté de ce qu'on sauvegarde :
+git clone https://github.com/CoopCodeCommun/borgwarehouse /tmp/bw
+cp -r /tmp/bw/scripts /opt/nextcloud/backup && cd /opt/nextcloud/backup
+
+cp env_example .env && chmod 600 .env
+$EDITOR .env         # BACKUP_TYPE=folder + DUMPS_DIRECTORY=/var/lib/nextcloud
+
+make init            # clé SSH, dépôt BWH, borg init, cron, 1re sauvegarde
+make check           # est-ce vraiment restaurable ?
+```
+
+`make init` enchaîne tout ce que l'ancienne procédure manuelle demandait de faire
+à la main : il génère la clé SSH dédiée, crée le dépôt sur borgwarehouse **via
+son API**, tire une passphrase, initialise le dépôt, exporte sa clé, pose le cron
+et lance une première sauvegarde qu'il vérifie.
+
+Deux choses te seront demandées :
+
+- **Un token API** (*Account → Integrations*), avec la permission **`create`
+  uniquement** : c'est le seul appel que fait `make init`. Sans token, il affiche
+  la clé publique et te laisse créer le dépôt à la main dans l'interface.
+- **De confirmer que tu as mis la passphrase au coffre.** Ce n'est pas une
+  formalité : la passphrase, la clé exportée (`borg key export`) et l'identifiant
+  du dépôt sont le seul maillon que la sauvegarde ne peut pas se sauvegarder
+  elle-même. Sans eux, les archives sont un bloc chiffré définitivement illisible.
+
+`make init` est **rejouable** : API injoignable, `borg init` raté, Ctrl-C en plein
+milieu — relance-le, il reprend ce qui existe. Le seul cas où il refuse, c'est
+quand le dépôt **contient déjà des archives**, car régénérer une passphrase les
+rendrait illisibles.
+
+## Choisir le type
+
+| `BACKUP_TYPE` | Pour quoi |
+|---|---|
+| `folder` | Un dossier complet — Nextcloud, `/home`, un volume applicatif |
+| `postgres` | Une base, ou toutes (`pg_dumpall`) |
+| `sqlite` | Bases SQLite (snapshot cohérent) |
+
+Une application dockerisée dont la base tourne dans un conteneur ? Le dépôt
+[**ghost**](https://github.com/CoopCodeCommun/ghost) applique le même kit à une
+stack Docker Compose (dump via `docker compose exec`) : c'est le modèle à copier.
+
+Rappel borgwarehouse : **une clé SSH = un dépôt**. Une machine qui sauvegarde
+plusieurs cibles a besoin d'une clé par dépôt — `make init` s'en occupe, et
+plusieurs sauvegardes cohabitent sans collision sur la même machine.
+
+## Vérifier — vraiment
+
+Qu'une archive existe ne prouve rien. `make check` répond à la seule question qui
+compte, *est-ce restaurable ?*, sans rien restaurer : archive récente, contenu
+attendu, et surtout **données exploitables** — un dump PostgreSQL est déroulé
+entièrement dans `pg_restore`, une base SQLite doit avoir un en-tête valide. Un
+dump tronqué (disque plein, process tué) a une taille crédible, se trouve bien
+dans l'archive, et ne se restaure pas.
+
+Il sort en code non nul si quelque chose cloche : branchable tel quel sur un
+monitoring. Détails dans le [README de `scripts/`](./scripts/README.md).
+
+Et n'oublie pas l'autre filet : borgwarehouse t'envoie un mail si un dépôt ne
+reçoit plus rien. Un cron qui échoue en silence, c'est un backup qui n'existe pas.
+
+## À la main (si tu ne veux pas du kit)
+
+<details>
+<summary>L'ancienne procédure, dépliée</summary>
+
+- Générer une clé SSH avec l'utilisateur qui lancera le script de sauvegarde
+- Créer un dépôt sur l'UX de borgwarehouse (BWH) en y ajoutant la clé publique
+- Cliquer sur la petite icône en haut à droite du dépôt pour copier son adresse SSH
+- Initier le dépôt avec l'utilisateur qui lancera le script :
 
 `borg init -e repokey-blake2 <adresse ssh>`
 
-- Exemple si dans le même serveur : 
+- Exemple sur le même serveur :
 `borg init -e repokey-blake2 ssh://borgwarehouse@localhost:2226/./155b31d4`
 
-- Exemple si serveur distant : 
+- Exemple sur un serveur distant :
 `borg init -e repokey-blake2 ssh://borgwarehouse@borgwarehouse.moi.me:2226/./155b31d4`
 
-Le dépot ne sera pas initialisé sur le dossier courant, mais bien dans le dossier monté du conteneur BWH.
+Le dépôt n'est pas initialisé dans le dossier courant, mais bien dans le dossier
+monté du conteneur BWH.
 
-- générer et renseigner un mot de passe super super super fort et le stocker dans un coffre fort numérique. Garder aussi l'id du repo au cazou ( ex: c7a620ed )
+- Générer une passphrase très forte et la stocker dans un coffre-fort numérique.
+  Garder aussi l'id du dépôt (ex : `c7a620ed`).
+- Exporter la clé du dépôt au même endroit :
 
-- Backuper la PASSPHRASE au même endroit que la clé :
 ```
-borg key export <adresse ssh> ./key && cat ./key && rm ./key
+borg key export <adresse ssh>
 ```
 
+</details>
 
-## Écrire un script de backup et le lancer régulièrement. 
-
-Exemple pour une base postgres : 
-- https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
-
-Exemple pour un dossier complet (attention a qui lance le script ! root ou user ? )
-- https://github.com/CoopCodeCommun/borgwarehouse/blob/main/backup_folder_example.sh
+Autre exemple externe pour Postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
 
 
 # Syncthing
