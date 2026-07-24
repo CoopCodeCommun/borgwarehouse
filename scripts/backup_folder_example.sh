@@ -104,8 +104,23 @@ if [ -f "$PATTERNS_FILE" ]; then
   create_args+=(--patterns-from "$PATTERNS_FILE")
 fi
 
+# Codes de sortie borg : 0 = succès, 1 = avertissement (un fichier illisible,
+# p.ex. un acme.json root — l'archive est complète pour tout le reste), 2 et
+# plus = vraie erreur. Avec `set -e`, un simple warning tuerait le script : on
+# capture donc le code, on tolère 1, on n'echoue que sur >= 2.
+borg_tolerant() {
+  local rc=0
+  "$@" || rc=$?
+  if [ "$rc" -ge 2 ]; then
+    echo "[folder-borg] ERREUR : '$1' a échoué (code $rc)" >&2
+    exit "$rc"
+  fi
+  [ "$rc" -eq 1 ] && echo "[folder-borg] (avertissement borg ignoré, code 1)" >&2
+  return 0
+}
+
 echo "$DATE_NOW on crée l'archive borg"
-/usr/bin/borg create -vs --compression lz4 \
+borg_tolerant /usr/bin/borg create -vs --compression lz4 \
   "${create_args[@]}" \
   "$BORG_REPO::$PREFIX-$DATE_NOW" \
   "$DUMPS_DIRECTORY"
@@ -114,7 +129,7 @@ echo "$DATE_NOW on prune les vieux borg :"
 # --glob-archives : le prune ne touche QUE les archives de cette sauvegarde. Si
 # deux sauvegardes partagent un depot, chacune garde sa retention — sans ce
 # filtre, elles se rognent mutuellement, en silence.
-/usr/bin/borg prune -v --list \
+borg_tolerant /usr/bin/borg prune -v --list \
   --glob-archives "$PREFIX-*" \
   --keep-within=7d --keep-daily=30 --keep-weekly=12 --keep-monthly=-1 --keep-yearly=-1 \
   "$BORG_REPO"

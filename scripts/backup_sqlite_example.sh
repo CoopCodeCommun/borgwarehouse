@@ -104,15 +104,30 @@ if ! find "$SNAPSHOT_DIR" -name '*.db' -type f | grep -q .; then
     exit 1
 fi
 
+# Codes de sortie borg : 0 = succès, 1 = avertissement (fichier illisible), 2 et
+# plus = vraie erreur. Avec `set -e`, un simple warning tuerait le script : on
+# capture le code, on tolère 1, on n'echoue que sur >= 2. Le snapshot sqlite,
+# lui, reste strict (un .backup raté est une vraie erreur, déjà géré plus haut).
+borg_tolerant() {
+    local rc=0
+    "$@" || rc=$?
+    if [ "$rc" -ge 2 ]; then
+        echo "[sqlite-borg] ERREUR : '$1' a échoué (code $rc)" >&2
+        exit "$rc"
+    fi
+    [ "$rc" -eq 1 ] && echo "[sqlite-borg] (avertissement borg ignoré, code 1)" >&2
+    return 0
+}
+
 echo "[sqlite-borg] $(date -Is) création de l'archive borg"
-borg create \
+borg_tolerant borg create \
     --stats \
     --compression zstd,9 \
     "$BORG_REPO::${PREFIX}-{hostname}-{now:%Y-%m-%dT%H:%M:%S}" \
     "$SNAPSHOT_DIR"
 
 echo "[sqlite-borg] $(date -Is) prune des vieilles archives"
-borg prune \
+borg_tolerant borg prune \
     --list \
     --glob-archives "${PREFIX}-*" \
     --keep-daily   "$KEEP_DAILY" \
@@ -121,6 +136,6 @@ borg prune \
     "$BORG_REPO"
 
 echo "[sqlite-borg] $(date -Is) compactage du dépôt"
-borg compact "$BORG_REPO"
+borg_tolerant borg compact "$BORG_REPO"
 
 echo "[sqlite-borg] $(date -Is) terminé"
