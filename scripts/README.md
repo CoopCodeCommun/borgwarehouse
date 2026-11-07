@@ -65,7 +65,16 @@ uniquement** suffit (*Account → Integrations*). Tout le reste — `init`, `cre
 
 Un token *create-only* qui fuiterait ne permettrait ni de lister ni de supprimer
 tes dépôts, au pire d'en créer des parasites. Il n'est de toute façon jamais
-stocké : saisi au clavier, il ne sert qu'une fois.
+stocké.
+
+Il est lu dans cet ordre, et `make init` ne pose la question que si les deux
+premiers sont vides :
+
+| Source | Usage |
+|---|---|
+| `BW_API_TOKEN` | passage ponctuel : `BW_API_TOKEN=xxx make init` |
+| `borgwarehouse_ccc_api` | le nom sous lequel les serveurs de production l'exportent — `make init` y devient non interactif sur ce point |
+| le clavier | saisie masquée, à défaut |
 
 Sans token, `make init` affiche la clé publique et te laisse créer le dépôt à la
 main dans l'interface, puis coller son adresse.

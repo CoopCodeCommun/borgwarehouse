@@ -19,8 +19,11 @@ set -euo pipefail
 # Un token avec la seule permission "create" suffit (Account > Integrations).
 # Tout le reste (init, create, prune, list) passe par SSH avec la cle dediee.
 # S'il fuite, un token create-only ne permet ni de lister ni de supprimer tes
-# depots. Le script ne le stocke nulle part. Il est saisi au clavier, ou passe
-# le temps d'une execution :   BW_API_TOKEN=xxx make init
+# depots. Le script ne le stocke nulle part.
+#
+# Il est lu, dans l'ordre : la variable BW_API_TOKEN (passage ponctuel,
+# BW_API_TOKEN=xxx make init), puis borgwarehouse_ccc_api (le nom sous lequel
+# les serveurs de production l'exportent), et a defaut il est saisi au clavier.
 #####
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
@@ -155,7 +158,18 @@ if [ -z "$BORG_REPO" ]; then
   BW_API_URL="$(demander "URL de borgwarehouse" "$BW_API_URL_DEFAUT")"
   BW_SSH_PORT="$(demander "Port SSH de borgwarehouse" "$BW_SSH_PORT_DEFAUT")"
 
-  if [ -z "${BW_API_TOKEN:-}" ]; then
+  # Le token vient de l'environnement quand il y est. `borgwarehouse_ccc_api`
+  # est le nom sous lequel les serveurs de production de CodeCommun
+  # l'exportent ; `BW_API_TOKEN` reste accepte pour un passage ponctuel
+  # (BW_API_TOKEN=xxx make init). A defaut, il est saisi au clavier.
+  # Dans les trois cas il n'est stocke nulle part.
+  # / Read from the environment when present: borgwarehouse_ccc_api is
+  # the name production servers export; BW_API_TOKEN still works for a
+  # one-off. Otherwise typed in. Never stored.
+  BW_API_TOKEN="${BW_API_TOKEN:-${borgwarehouse_ccc_api:-}}"
+  if [ -n "$BW_API_TOKEN" ]; then
+    dire "token trouve dans l'environnement : creation automatique du depot."
+  else
     read -r -s -p "[init] Token API BWH, permission 'create' (vide = methode manuelle) : " BW_API_TOKEN || true
     echo
   fi
