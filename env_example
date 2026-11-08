@@ -7,7 +7,8 @@ SSH_SERVER_PORT=2222
 # Hostname and URL
 FQDN=bwh.domain.com
 NEXTAUTH_URL=https://bwh.domain.com
-SYNC_DOMAIN=https://sync.domain.com
+# Nom d'hôte seul, sans https:// (utilisé dans la règle Host() de Traefik)
+SYNC_DOMAIN=sync.domain.com
 
 # Secrects
 NEXTAUTH_SECRET=your-secret

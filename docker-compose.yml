@@ -5,7 +5,9 @@ services:
     # Pas de "user:" ici : le conteneur doit démarrer en root pour que son
     # entrypoint remappe l'utilisateur interne (sed sur /etc/passwd) vers UID/GID.
     ports:
-      - "${WEB_SERVER_PORT:?WEB_SERVER_PORT variable missing}:3000"
+      # Local uniquement : l'accès public passe par Traefik (+ CrowdSec).
+      # Le cron de l'hôte appelle http://localhost:3000.
+      - "127.0.0.1:${WEB_SERVER_PORT:?WEB_SERVER_PORT variable missing}:3000"
       - "${SSH_SERVER_PORT:?SSH_SERVER_PORT variable missing}:22"
     env_file:
       - .env
@@ -32,15 +34,17 @@ services:
     restart: always
 
   syncthing:
+    container_name: syncthing
     image: ghcr.io/linuxserver/syncthing
     volumes:
       - ./sync_config:/config
       - ./sync_data:/sync_data
       - ${BORG_REPOSITORY_PATH:?BORG_REPOSITORY_PATH variable missing}:/home/borgwarehouse/repos
+    # Pas de 8384 publié : l'interface passe uniquement par Traefik.
     ports:
-      - 8384:8384
-      - 22000:22000
-      - 21027:21027/udp
+      - 22000:22000/tcp
+      - 22000:22000/udp   # QUIC
+      - 21027:21027/udp   # découverte LAN
     environment:
       - PUID=${PUID:?PUID variable missing}
       - PGID=${PGID:?PGID variable missing}

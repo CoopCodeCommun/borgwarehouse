@@ -11,22 +11,64 @@ mkdir config ssh ssh_host repos tmp logs sync_config sync_data
 sudo chown 1001:1001 config ssh ssh_host repos tmp logs sync_config sync_data
 
 # Copier l'env exemple et remplir les variables
-cp env_example .env
+#   FQDN / NEXTAUTH_URL : le domaine de BWH
+#   SYNC_DOMAIN : nom d'hôte seul, SANS https:// (il finit dans la règle Host() de Traefik)
+#   NEXTAUTH_SECRET / CRONJOB_KEY : openssl rand -hex 32
+cp env_example .env && chmod 600 .env
 
 # Lancez la stack
 docker compose up -d && docker compose logs -f
 ```
 
+Prérequis : la stack [TraefikV3](https://github.com/CoopCodeCommun/TraefikV3)
+(réseau `frontend`, résolveur `myresolver`, CrowdSec appliqué sur `websecure`)
+et les DNS de `FQDN` et `SYNC_DOMAIN` pointant sur le serveur.
+
+Ports à ouvrir sur le routeur / pare-feu :
+
+| Port | Pour |
+|---|---|
+| 80, 443 | Traefik (interfaces BWH et Syncthing) |
+| `SSH_SERVER_PORT` (2222) /tcp | SSH de borg — les clients qui envoient leurs sauvegardes |
+| 22000 /tcp + /udp | Syncthing entre serveurs |
+
+L'interface BWH (3000) n'est publiée que sur `127.0.0.1` : depuis l'extérieur, on
+passe uniquement par Traefik. Idem pour Syncthing (8384 n'est pas publié).
+
 admin/admin pour la première connection : changez les creds et ajoutez votre email !
+
+### ⚠️ Mot de passe Syncthing : tout de suite après le `up`
+
+Un Syncthing neuf **n'a pas de mot de passe**, et derrière Traefik son interface est
+**ouverte à tout Internet** dès que le conteneur démarre (le « host check » ne
+protège pas ici). Poser un mot de passe immédiatement, via l'API locale :
+
+```bash
+KEY=$(docker exec syncthing sh -c 'grep -o "<apikey>[^<]*" /config/config.xml | cut -d">" -f2')
+IP=$(docker inspect syncthing -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+PW=$(openssl rand -base64 18 | tr -d '/+=')
+printf 'SYNCTHING_GUI_USER=admin\nSYNCTHING_GUI_PASSWORD=%s\n' "$PW" > sync_gui_credentials.txt
+chmod 600 sync_gui_credentials.txt
+curl -X PATCH -H "X-API-Key: $KEY" -H 'Content-Type: application/json' \
+  -d "{\"user\":\"admin\",\"password\":\"$PW\"}" "http://$IP:8384/rest/config/gui"
+# (la connexion est coupée par le redémarrage de la GUI : c'est normal)
+```
+
+Le mot de passe est dans `sync_gui_credentials.txt` (ignoré par git) : à mettre au coffre.
 
 ### Create a cron on host ( not inside docker ) : 
 
 BW a besoin d'un cron qui lui demande d'aller vérifier que tout les dépots sont bien a jour. Si l'un d'entre eux a dépassé son uptime, il envoie un mail.
 Ce qui est le but principal recherché de cette stack : prévenir lorsqu'un backup n'arrive pas.
 
+Le script `bwh_cron.sh` lit `CRONJOB_KEY` dans `.env` (la clé n'apparaît pas en
+clair dans la crontab). `crontab -e` :
+
 ```bash
-* * * * * curl --request POST --url 'http://localhost:3000/api/v1/cron/status' --header 'Authorization: Bearer CRONJOB_KEY' ; curl --request POST --url 'http://localhost:3000/api/v1/cron/storage' --header 'Authorization: Bearer CRONJOB_KEY'
+* * * * * /chemin/vers/borgwarehouse/bwh_cron.sh
 ```
+
+Pensez aussi aux variables `MAIL_SMTP_*` du `.env` : sans SMTP, pas d'alerte.
 
 
 # Sauvegarder une nouvelle application
@@ -133,15 +175,36 @@ borg key export <adresse ssh>
 Autre exemple externe pour Postgres : https://github.com/TiBillet/Lespass/blob/PreProd/cron/saveDb.sh
 
 
-# Syncthing
+# Syncthing : réplication des dépôts entre serveurs
 
-Il a été lancé avec le up et est configuré pour avoir le dossier repo ( le même ou borg mets les repo ) dans /home/borgwarehouse/repos
+Chaque serveur qui fait tourner cette stack **envoie** ses propres dépôts borg aux
+autres, et **reçoit** ceux des autres. Deux dossiers, deux rôles, à ne jamais mélanger :
 
-- se connecter à l'interface et ajouter un user / password
-- créez un nouveau partage :
-	- le chemin racide du partage doit être /home/borgwarehouse/repos 
-	- dans l'onglet avancé, selectionnez bien Envoi seulement
+| Chemin dans le conteneur | Sur l'hôte | Contenu | Type de partage |
+|---|---|---|---|
+| `/home/borgwarehouse/repos` | `./repos` (`BORG_REPOSITORY_PATH`) | les dépôts de **ce** serveur (ceux que BWH gère) | **Envoi seulement** |
+| `/sync_data/<serveur>` | `./sync_data/<serveur>` | les copies des dépôts **des autres** serveurs | **Réception seulement** |
 
-Attention, choisir ce chemin que pour synchroniser le dossier borg
-ne pas rajouter dans le futur d'autres dossier sync depuis synthing dans ce dossier
-utiliser pour cela le dossier /sync_data
+1. Poser le mot de passe de l'interface (voir plus haut), puis se connecter.
+2. Ajouter les autres serveurs comme appareils (échange des Device ID).
+3. **Partager ses propres dépôts** : nouveau partage, chemin
+   `/home/borgwarehouse/repos`, un ID/nom propre au serveur (ex. `BWH maison`),
+   onglet avancé → **Envoi seulement**, partagé avec tous les autres serveurs.
+4. **Accepter les partages des autres** : chemin `/sync_data/<nom du serveur>`,
+   onglet avancé → **Réception seulement**.
+
+Ne jamais recevoir le partage d'un autre serveur dans `/home/borgwarehouse/repos` :
+ses dépôts se mélangeraient à ceux de BWH (et la réception seule les traiterait
+comme des modifications locales à annuler). Ne rien mettre d'autre que les dépôts
+borg dans `repos`.
+
+À savoir :
+
+- Une suppression ou une corruption (rançongiciel, `borg delete`…) côté émetteur
+  **se réplique** chez tous les récepteurs. Protections : mode *append-only* sur
+  les dépôts dans BWH, et/ou snapshots (ZFS, versioning Syncthing) de `sync_data`
+  côté récepteurs.
+- Une copie prise pendant une sauvegarde en cours peut être momentanément
+  incohérente ; elle redevient cohérente une fois la synchro terminée.
+- Les copies sont chiffrées (repokey) : restaurer depuis un autre serveur demande
+  la passphrase du dépôt, comme sur l'original.

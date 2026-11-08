@@ -1,1 +1,12 @@
 .env
+
+# Données et état des conteneurs
+/config/
+/ssh/
+/ssh_host/
+/repos/
+/tmp/
+/logs/
+/sync_config/
+/sync_data/
+/sync_gui_credentials.txt
