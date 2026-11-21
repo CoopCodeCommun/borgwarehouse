@@ -1,3 +1,10 @@
+# Rotation des logs Docker (sans elle, le json-file grossit sans limite).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   borgwarehouse:
     container_name: borgwarehouse
@@ -32,6 +39,7 @@ services:
     networks:
       - frontend
     restart: always
+    logging: *logging
 
   syncthing:
     container_name: syncthing
@@ -59,6 +67,7 @@ services:
     networks:
       - frontend
     restart: always
+    logging: *logging
 
   # Apprise is used to send notifications, it's optional. http://apprise:8000 is the URL to use in BorgWarehouse.
   # apprise:
